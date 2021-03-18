@@ -203,24 +203,29 @@ func (h *Hook) sendLogMessageViaAPI(entry *logrus.Entry, labels map[string]strin
 			log.Println("the error reporting service is not set")
 		}
 	} else {
+		logEntry := &logging.LogEntry{
+			Severity:    severityString(entry.Level),
+			Timestamp:   entry.Time.Format(time.RFC3339),
+			TextPayload: entry.Message,
+			Labels:      labels,
+			HttpRequest: httpReq,
+		}
+
 		logName := h.logName
 		if h.errorReportingLogName != "" && isError(entry) {
 			logName = h.errorReportingLogName
 		}
+
+		if trace, ok := labels["trace"]; ok {
+			logEntry.Trace = trace
+		}
+
 		_, err := h.service.Write(&logging.WriteLogEntriesRequest{
 			LogName:        logName,
 			Resource:       h.resource,
 			Labels:         h.labels,
 			PartialSuccess: h.partialSuccess,
-			Entries: []*logging.LogEntry{
-				{
-					Severity:    severityString(entry.Level),
-					Timestamp:   entry.Time.Format(time.RFC3339),
-					TextPayload: entry.Message,
-					Labels:      labels,
-					HttpRequest: httpReq,
-				},
-			},
+			Entries: []*logging.LogEntry{logEntry},
 		}).Do()
 		if err != nil {
 			log.Println("cannot deliver log entry:", err)
