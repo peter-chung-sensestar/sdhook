@@ -161,7 +161,18 @@ func ErrorReportingService(service string) Option {
 
 // requiredScopes are the oauth2 scopes required for stackdriver logging.
 var requiredScopes = []string{
-	logging.CloudPlatformScope,
+	logging.LoggingWriteScope,
+}
+
+func GoogleCredentials(credentials *google.Credentials) Option {
+	return func(h *Hook) error {
+		// set client
+		return HTTPClient(&http.Client{
+			Transport: &oauth2.Transport{
+				Source: oauth2.ReuseTokenSource(nil, credentials.TokenSource),
+			},
+		})(h)
+	}
 }
 
 // GoogleServiceAccountCredentialsJSON is an option that creates the
